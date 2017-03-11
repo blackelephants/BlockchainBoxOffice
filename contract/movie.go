@@ -19,8 +19,8 @@ type Cinema struct {
 type VideoHall struct {
 	Name string `json:"name"`
 	Cinema string `json:"cinema"`
-	Width uint32 `json:"width"`
-	Height uint32 `json:"height"`
+	Width uint64 `json:"width"`
+	Height uint64 `json:"height"`
 }
 
 // 票务平台
@@ -125,7 +125,7 @@ func (c *Contract) Init(stub shim.ChaincodeStubInterface, function string, args 
 		{
 			Name: "cinema",
 			Type: shim.ColumnDefinition_STRING,
-			Key: false,
+			Key: true,
 		},
 		{
 			Name: "width",
@@ -277,6 +277,10 @@ func (c *Contract) Query(stub shim.ChaincodeStubInterface, function string, args
 		return c.queryPlan(stub, args)
 	} else if function == "queryCinema" {
 		return c.queryCinema(stub, args)
+	} else if function == "queryTicketPlatform" {
+		return c.queryTicketPlatform(stub, args)
+	} else if function == "queryVideoHall" {
+		return c.queryVideoHall(stub, args)
 	}
 
 	fmt.Println("query did not find func: " + function)
@@ -324,7 +328,10 @@ func (c *Contract) registerTicketPlatform(stub shim.ChaincodeStubInterface, args
 	if err != nil {
 		return nil, err
 	}
-	return json.Marshal(BoolResult{Success: success})
+	if !success {
+		return nil, errors.New("Insert false, may be table not found or row already exist")
+	}
+	return nil, nil
 }
 
 func (c *Contract) registerVideoHall(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
@@ -374,7 +381,10 @@ func (c *Contract) registerVideoHall(stub shim.ChaincodeStubInterface, args []st
 	if err != nil {
 		return nil, err
 	}
-	return json.Marshal(BoolResult{Success: success})
+	if !success {
+		return nil, errors.New("Insert false, may be table not found or row already exist")
+	}
+	return nil, nil
 }
 
 func (c *Contract) planMovie(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
@@ -700,4 +710,53 @@ func (c *Contract) queryCinema(stub shim.ChaincodeStubInterface, args []string) 
 		Company: row.Columns[1].GetString_(),
 	}
 	return json.Marshal(cinema)
+}
+
+func (c *Contract) queryTicketPlatform(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
+	fmt.Println("running queryTicketPlatform")
+	if len(args) != 1 {
+		return nil, errors.New("Incorrect number of arguments. Expecting 1 args:name")
+	}
+	name := args[0]
+	fmt.Printf("name = %s", name)
+	row, err := stub.GetRow("ticket_platform", []shim.Column{
+		{
+			&shim.Column_String_{String_:name},
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+	ticketPlatform := TicketPlatform{
+		Name: row.Columns[0].GetString_(),
+	}
+	return json.Marshal(ticketPlatform)
+}
+
+func (c *Contract) queryVideoHall(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
+	fmt.Println("running queryVideoHall")
+	if len(args) != 2 {
+		return nil, errors.New("Incorrect number of arguments. Expecting 2 args:name, cinema")
+	}
+	name := args[0]
+	cinema := args[1]
+	fmt.Printf("name = %s, cinema = %s", name, cinema)
+	row, err := stub.GetRow("video_hall", []shim.Column{
+		{
+			&shim.Column_String_{String_:name},
+		},
+		{
+			&shim.Column_String_{String_:cinema},
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+	videoHall := VideoHall{
+		Name: row.Columns[0].GetString_(),
+		Cinema: row.Columns[1].GetString_(),
+		Width: row.Columns[2].GetUint64(),
+		Height: row.Columns[3].GetUint64(),
+	}
+	return json.Marshal(videoHall)
 }
