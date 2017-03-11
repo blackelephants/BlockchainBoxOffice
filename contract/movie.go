@@ -74,6 +74,18 @@ func main() {
 // Init resets all the things
 func (t *Contract) Init(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
 	fmt.Println("init is running ")
+	stub.CreateTable("cinema", []*shim.ColumnDefinition{
+		{
+			Name: "name",
+			Type: shim.ColumnDefinition_STRING,
+			Key: true,
+		},
+		{
+			Name: "company",
+			Type: shim.ColumnDefinition_STRING,
+			Key: false,
+		},
+	})
 	return nil, nil
 }
 
@@ -127,7 +139,23 @@ func (t *Contract) registerCinema(stub shim.ChaincodeStubInterface, args []strin
 	name := args[0]
 	company := args[1]
 	fmt.Printf("name = %s, company = %s", name, company)
-	return nil, nil
+	stub.InsertRow("cinema", shim.Row{[]*shim.Column{
+		{
+			&shim.Column_String_{String_:name},
+		},
+		{
+			&shim.Column_String_{String_:company},
+		},
+	}})
+	row, err := stub.GetRow("cinema", []shim.Column{
+		{
+			&shim.Column_String_{String_:name},
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+	return []byte(row.String()), nil
 }
 
 func (t *Contract) registerTicketPlatform(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
