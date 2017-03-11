@@ -44,8 +44,8 @@ type Ticket struct {
 	ID string `json:"id"`
 	Movie string `json:"movie"`
 	MoviePlan string `json:"movie_plan"`
-	X uint32 `json:"x"`
-	Y uint32 `json:"y"`
+	X uint64 `json:"x"`
+	Y uint64 `json:"y"`
 	IsLocked bool `json:"is_locked"`
 	LockPrice uint32 `json:"lock_price"`
 	IsChecked bool `json:"is_checked"`
@@ -54,9 +54,9 @@ type Ticket struct {
 
 // 分账
 type Clear struct {
-	IssueNum uint32 `json:"issue_num"`
-	LockNum uint32 `json:"lock_num"`
-	CheckNum uint32 `json:"check_num"`
+	IssueNum uint64 `json:"issue_num"`
+	LockNum uint64 `json:"lock_num"`
+	CheckNum uint64 `json:"check_num"`
 	BoxOffice uint64 `json:"box_office"`
 }
 
@@ -203,12 +203,12 @@ func (c *Contract) Init(stub shim.ChaincodeStubInterface, function string, args 
 		},
 		{
 			Name: "x",
-			Type: shim.ColumnDefinition_UINT32,
+			Type: shim.ColumnDefinition_UINT64,
 			Key: false,
 		},
 		{
 			Name: "y",
-			Type: shim.ColumnDefinition_UINT32,
+			Type: shim.ColumnDefinition_UINT64,
 			Key: false,
 		},
 		{
@@ -308,7 +308,7 @@ func (c *Contract) registerCinema(stub shim.ChaincodeStubInterface, args []strin
 	}
 
 	if !success {
-		return nil, errors.New("Insert cinema false, may be table not found or row already exist")
+		return nil, fmt.Errorf("Insert cinema %s false, may be table not found or row already exist", name)
 	}
 	return nil, nil
 }
@@ -329,7 +329,7 @@ func (c *Contract) registerTicketPlatform(stub shim.ChaincodeStubInterface, args
 		return nil, err
 	}
 	if !success {
-		return nil, errors.New("Insert ticket platform false, may be table not found or row already exist")
+		return nil, fmt.Errorf("Insert ticket platform %s false, may be table not found or row already exist", name)
 	}
 	return nil, nil
 }
@@ -385,7 +385,7 @@ func (c *Contract) registerVideoHall(stub shim.ChaincodeStubInterface, args []st
 		return nil, err
 	}
 	if !success {
-		return nil, errors.New("Insert video hall false, may be table not found or row already exist")
+		return nil, fmt.Errorf("Insert cinema %s video hall %s false, may be table not found or row already exist", cinema, name)
 	}
 	return nil, nil
 }
@@ -408,12 +408,18 @@ func (c *Contract) planMovie(stub shim.ChaincodeStubInterface, args []string) ([
 		{
 			&shim.Column_String_{String_:video_hall},
 		},
+		{
+			&shim.Column_String_{String_:cinema},
+		},
 	})
 	if err != nil {
 		return nil, err
 	}
-	width := row.Columns[2].GetUint32()
-	height := row.Columns[3].GetUint32()
+	if len(row.Columns) == 0 {
+		return nil, fmt.Errorf("Cinema %s's video hall %s doesn't exist", cinema, video_hall)
+	}
+	width := row.Columns[2].GetUint64()
+	height := row.Columns[3].GetUint64()
 
 	success, err := stub.InsertRow("movie_plan", shim.Row{Columns: []*shim.Column{
 		{
@@ -442,11 +448,11 @@ func (c *Contract) planMovie(stub shim.ChaincodeStubInterface, args []string) ([
 		return nil, err
 	}
 	if !success {
-		return json.Marshal(BoolResult{Success: false})
+		return nil, fmt.Errorf("Insert movie plan %s false, may be table not found or row already exist", id)
 	}
 
 	// 排片生成电影票
-	var i, j uint32
+	var i, j uint64
 	for i = 0; i < height; i++ {
 		for j = 0; j < width; j++ {
 			ticketID := fmt.Sprintf("%s:%d-%d", id, i, j)
@@ -455,13 +461,16 @@ func (c *Contract) planMovie(stub shim.ChaincodeStubInterface, args []string) ([
 					Value: &shim.Column_String_{String_:ticketID}, // id
 				},
 				{
+					Value: &shim.Column_String_{String_:movie}, // movie
+				},
+				{
 					Value: &shim.Column_String_{String_:id}, // movie_plan
 				},
 				{
-					Value: &shim.Column_Uint32{Uint32:j}, // x
+					Value: &shim.Column_Uint64{Uint64:j}, // x
 				},
 				{
-					Value: &shim.Column_Uint32{Uint32:i}, // y
+					Value: &shim.Column_Uint64{Uint64:i}, // y
 				},
 				{
 					Value: &shim.Column_Bool{Bool:false}, // is_locked
@@ -481,7 +490,7 @@ func (c *Contract) planMovie(stub shim.ChaincodeStubInterface, args []string) ([
 			}
 
 			if !success {
-				return json.Marshal(BoolResult{Success: false})
+				return nil, fmt.Errorf("Insert ticket %s false, may be table not found or row already exist", ticketID)
 			}
 		}
 	}
@@ -491,7 +500,7 @@ func (c *Contract) planMovie(stub shim.ChaincodeStubInterface, args []string) ([
 		return nil, err
 	}
 	var cr Clear
-	if r != nil {
+	if r != nil && len(r) > 0 {
 		json.Unmarshal(r, cr)
 	} else {
 		cr = Clear{}
@@ -502,7 +511,7 @@ func (c *Contract) planMovie(stub shim.ChaincodeStubInterface, args []string) ([
 		return nil, err
 	}
 	stub.PutState(movie, bs)
-	return json.Marshal(BoolResult{Success: true})
+	return nil, nil
 }
 
 func (c *Contract) lockTicket(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
@@ -644,12 +653,15 @@ func (c *Contract) queryTicket(stub shim.ChaincodeStubInterface, args []string) 
 	if err != nil {
 		return nil, err
 	}
+	if len(row.Columns) == 0 {
+		return []byte{}, nil
+	}
 	ticket := Ticket{
 		ID: row.Columns[0].GetString_(),
 		Movie: row.Columns[1].GetString_(),
 		MoviePlan: row.Columns[2].GetString_(),
-		X: row.Columns[3].GetUint32(),
-		Y: row.Columns[4].GetUint32(),
+		X: row.Columns[3].GetUint64(),
+		Y: row.Columns[4].GetUint64(),
 		IsLocked: row.Columns[5].GetBool(),
 		LockPrice: row.Columns[6].GetUint32(),
 		IsChecked: row.Columns[7].GetBool(),
