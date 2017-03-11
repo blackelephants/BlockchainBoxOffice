@@ -47,7 +47,7 @@ type Ticket struct {
 	X uint64 `json:"x"`
 	Y uint64 `json:"y"`
 	IsLocked bool `json:"is_locked"`
-	LockPrice uint32 `json:"lock_price"`
+	LockPrice uint64 `json:"lock_price"`
 	IsChecked bool `json:"is_checked"`
 	IsClear bool `json:"is_clear"`
 }
@@ -480,7 +480,7 @@ func (c *Contract) planMovie(stub shim.ChaincodeStubInterface, args []string) ([
 					Value: &shim.Column_Bool{Bool:false}, // is_locked
 				},
 				{
-					Value: &shim.Column_Uint32{Uint32:0}, // lock_price
+					Value: &shim.Column_Uint64{Uint64:0}, // lock_price
 				},
 				{
 					Value: &shim.Column_Bool{Bool:false}, // is_checked
@@ -667,7 +667,7 @@ func (c *Contract) queryTicket(stub shim.ChaincodeStubInterface, args []string) 
 		X: row.Columns[3].GetUint64(),
 		Y: row.Columns[4].GetUint64(),
 		IsLocked: row.Columns[5].GetBool(),
-		LockPrice: row.Columns[6].GetUint32(),
+		LockPrice: row.Columns[6].GetUint64(),
 		IsChecked: row.Columns[7].GetBool(),
 		IsClear: row.Columns[8].GetBool(),
 	}
