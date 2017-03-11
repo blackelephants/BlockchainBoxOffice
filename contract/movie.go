@@ -303,10 +303,11 @@ func (c *Contract) registerCinema(stub shim.ChaincodeStubInterface, args []strin
 		return nil, err
 	}
 
-	return json.Marshal(BoolResult{Success: success})
+	if !success {
+		return nil, errors.New("Insert false, may be table not found or row already exist")
+	}
+	return nil, nil
 }
-
-
 
 func (c *Contract) registerTicketPlatform(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
 	fmt.Println("running registerTicketPlatform")
