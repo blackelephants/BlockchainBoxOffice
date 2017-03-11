@@ -257,8 +257,6 @@ func (c *Contract) Invoke(stub shim.ChaincodeStubInterface, function string, arg
 		return c.lockTicket(stub, args)
 	} else if function == "checkTicket" {
 		return c.checkTicket(stub, args)
-	} else if function == "clear" {
-		return c.clear(stub, args)
 	}
 
 	fmt.Println("invoke did not find func: " + function)
@@ -284,6 +282,8 @@ func (c *Contract) Query(stub shim.ChaincodeStubInterface, function string, args
 		return c.queryPlan(stub, args)
 	} else if function == "queryMovie" {
 		return c.queryMovie(stub, args)
+	} else if function == "clear" {
+		return c.clear(stub, args)
 	}
 
 	fmt.Println("query did not find func: " + function)
@@ -703,7 +703,7 @@ func (c *Contract) queryAllPlan(stub shim.ChaincodeStubInterface, args []string)
 		select {
 		case row, ok := <- rowChan:
 			if !ok {
-				plans = nil
+				rowChan = nil
 			} else {
 				plans = append(plans, MoviePlan{
 					ID: row.Columns[0].GetString_(),
@@ -716,7 +716,7 @@ func (c *Contract) queryAllPlan(stub shim.ChaincodeStubInterface, args []string)
 				})
 			}
 		}
-		if plans == nil {
+		if rowChan == nil {
 			break
 		}
 	}
