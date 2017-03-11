@@ -3,62 +3,74 @@ package main
 import (
 	"fmt"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
-	"time"
 	"errors"
+	"strconv"
+	"encoding/json"
+	"time"
 )
 
 // 电影院
 type Cinema struct {
-	Name string
-	Company string
+	Name string `json:"name"`
+	Company string `json:"company"`
 }
 
 // 影厅
 type VideoHall struct {
-	Cinema Cinema
-	Name string
-	Seats [][]int
+	Name string `json:"name"`
+	Cinema string `json:"cinema"`
+	Width uint32 `json:"width"`
+	Height uint32 `json:"height"`
 }
 
 // 票务平台
 type TicketPlatform struct {
-	Name string
+	Name string `json:"name"`
 }
 
 // 排片
 type MoviePlan struct {
-	ID string
-	Movie string
-	Cinema Cinema
-	VideoHall VideoHall
-	PlanTime time.Time
-	StartTime time.Time
-	EndTime time.Time
+	ID string `json:"id"`
+	Movie string `json:"movie"`
+	Cinema string `json:"cinema"`
+	VideoHall string `json:"video_hall"`
+	PlanTime string `json:"plan_time"`
+	StartTime string `json:"start_time"`
+	EndTime string `json:"end_time"`
 }
 
 // 电影票
 type Ticket struct {
-	ID string
-	MoviePlan MoviePlan
-	X int
-	Y int
-	IsLocked bool
-	LockPrice float64
-	LockTime time.Time
-	IsChecked bool
-	IsClear bool
+	ID string `json:"id"`
+	Movie string `json:"movie"`
+	MoviePlan string `json:"movie_plan"`
+	X uint32 `json:"x"`
+	Y uint32 `json:"y"`
+	IsLocked bool `json:"is_locked"`
+	LockPrice uint32 `json:"lock_price"`
+	IsChecked bool `json:"is_checked"`
+	IsClear bool `json:"is_clear"`
+}
+
+// 分账
+type Clear struct {
+	IssueNum uint32 `json:"issue_num"`
+	LockNum uint32 `json:"lock_num"`
+	CheckNum uint32 `json:"check_num"`
+	BoxOffice uint64 `json:"box_office"`
 }
 
 // 分账结果
 type ClearResult struct {
-	IssueNum int
-	LockNum int
-	CheckNum int
-	BoxOffice float64
-	RegulationProfit float64
-	CinemaProfit float64
-	CinemaCompanyProfit float64
-	IssuerProfit float64
+	Clear
+	RegulationProfit float32 `json:"regulation_profit"`
+	CinemaProfit float32 `json:"cinema_profit"`
+	CinemaCompanyProfit float32 `json:"cinema_company_profit"`
+	IssuerProfit float32 `json:"issuer_profit"`
+}
+
+type BoolResult struct {
+	Success bool `json:"success"`
 }
 
 type Contract struct {
@@ -72,9 +84,10 @@ func main() {
 }
 
 // Init resets all the things
-func (t *Contract) Init(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
+func (c *Contract) Init(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
 	fmt.Println("init is running ")
-	stub.CreateTable("cinema", []*shim.ColumnDefinition{
+	fmt.Println("create table cinema")
+	err := stub.CreateTable("cinema", []*shim.ColumnDefinition{
 		{
 			Name: "name",
 			Type: shim.ColumnDefinition_STRING,
@@ -86,30 +99,167 @@ func (t *Contract) Init(stub shim.ChaincodeStubInterface, function string, args 
 			Key: false,
 		},
 	})
+	if err != nil {
+		return nil, err
+	}
+
+	fmt.Println("create table ticket_platform")
+	err = stub.CreateTable("ticket_platform", []*shim.ColumnDefinition{
+		{
+			Name: "name",
+			Type: shim.ColumnDefinition_STRING,
+			Key: true,
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	fmt.Println("create table video_hall")
+	err = stub.CreateTable("video_hall", []*shim.ColumnDefinition{
+		{
+			Name: "name",
+			Type: shim.ColumnDefinition_STRING,
+			Key: true,
+		},
+		{
+			Name: "cinema",
+			Type: shim.ColumnDefinition_STRING,
+			Key: false,
+		},
+		{
+			Name: "width",
+			Type: shim.ColumnDefinition_UINT64,
+			Key: false,
+		},
+		{
+			Name: "height",
+			Type: shim.ColumnDefinition_UINT64,
+			Key: false,
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	fmt.Println("create table movie_plan")
+	err = stub.CreateTable("movie_plan", []*shim.ColumnDefinition{
+		{
+			Name: "id",
+			Type: shim.ColumnDefinition_STRING,
+			Key: true,
+		},
+		{
+			Name: "movie",
+			Type: shim.ColumnDefinition_STRING,
+			Key: false,
+		},
+		{
+			Name: "cinema",
+			Type: shim.ColumnDefinition_STRING,
+			Key: false,
+		},
+		{
+			Name: "video_hall",
+			Type: shim.ColumnDefinition_STRING,
+			Key: false,
+		},
+		{
+			Name: "plan_time",
+			Type: shim.ColumnDefinition_STRING,
+			Key: false,
+		},
+		{
+			Name: "start_time",
+			Type: shim.ColumnDefinition_STRING,
+			Key: false,
+		},
+		{
+			Name: "end_time",
+			Type: shim.ColumnDefinition_STRING,
+			Key: false,
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	fmt.Println("create table ticket")
+	err = stub.CreateTable("ticket", []*shim.ColumnDefinition{
+		{
+			Name: "id",
+			Type: shim.ColumnDefinition_STRING,
+			Key: true,
+		},
+		{
+			Name: "movie",
+			Type: shim.ColumnDefinition_STRING,
+			Key: false,
+		},
+		{
+			Name: "movie_plan",
+			Type: shim.ColumnDefinition_STRING,
+			Key: false,
+		},
+		{
+			Name: "x",
+			Type: shim.ColumnDefinition_UINT32,
+			Key: false,
+		},
+		{
+			Name: "y",
+			Type: shim.ColumnDefinition_UINT32,
+			Key: false,
+		},
+		{
+			Name: "is_locked",
+			Type: shim.ColumnDefinition_BOOL,
+			Key: false,
+		},
+		{
+			Name: "lock_price",
+			Type: shim.ColumnDefinition_UINT64,
+			Key: false,
+		},
+		{
+			Name: "is_checked",
+			Type: shim.ColumnDefinition_BOOL,
+			Key: false,
+		},
+		{
+			Name: "is_clear",
+			Type: shim.ColumnDefinition_BOOL,
+			Key: false,
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+
 	return nil, nil
 }
 
 // Invoke isur entry point to invoke a chaincode function
-func (t *Contract) Invoke(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
+func (c *Contract) Invoke(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
 	fmt.Println("invoke is running " + function)
 
 	// Handle different functions
 	if function == "init" {
-		return t.Init(stub, "init", args)
+		return c.Init(stub, "init", args)
 	} else if function == "registerCinema" {
-		return t.registerCinema(stub, args)
+		return c.registerCinema(stub, args)
 	} else if function == "registerTicketPlatform" {
-		return t.registerTicketPlatform(stub, args)
+		return c.registerTicketPlatform(stub, args)
 	} else if function == "registerVideoHall" {
-		return t.registerVideoHall(stub, args)
+		return c.registerVideoHall(stub, args)
 	} else if function == "planMovie" {
-		return t.planMovie(stub, args)
+		return c.planMovie(stub, args)
 	} else if function == "lockTicket" {
-		return t.lockTicket(stub, args)
+		return c.lockTicket(stub, args)
 	} else if function == "checkTicket" {
-		return t.checkTicket(stub, args)
+		return c.checkTicket(stub, args)
 	} else if function == "clear" {
-		return t.clear(stub, args)
+		return c.clear(stub, args)
 	}
 
 	fmt.Println("invoke did not find func: " + function)
@@ -117,21 +267,23 @@ func (t *Contract) Invoke(stub shim.ChaincodeStubInterface, function string, arg
 }
 
 // Query is our entry point for queries
-func (t *Contract) Query(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
+func (c *Contract) Query(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
 	fmt.Println("query is running " + function)
 
 	// Handle different functions
 	if function == "queryTicket" { //read a variable
-		return t.queryTicket(stub, args)
+		return c.queryTicket(stub, args)
 	} else if function == "queryPlan" {
-		return t.queryPlan(stub, args)
+		return c.queryPlan(stub, args)
+	} else if function == "queryCinema" {
+		return c.queryCinema(stub, args)
 	}
 
 	fmt.Println("query did not find func: " + function)
 	return nil, errors.New("Received unknown function query: " + function)
 }
 
-func (t *Contract) registerCinema(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
+func (c *Contract) registerCinema(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
 	fmt.Println("running registerCinema")
 	if len(args) != 2 {
 		return nil, errors.New("Incorrect number of arguments. Expecting 2 args:name, company")
@@ -139,14 +291,401 @@ func (t *Contract) registerCinema(stub shim.ChaincodeStubInterface, args []strin
 	name := args[0]
 	company := args[1]
 	fmt.Printf("name = %s, company = %s", name, company)
-	stub.InsertRow("cinema", shim.Row{[]*shim.Column{
+	success, err := stub.InsertRow("cinema", shim.Row{Columns: []*shim.Column{
 		{
-			&shim.Column_String_{String_:name},
+			Value: &shim.Column_String_{String_:name},
 		},
 		{
-			&shim.Column_String_{String_:company},
+			Value: &shim.Column_String_{String_:company},
 		},
 	}})
+	if err != nil {
+		return nil, err
+	}
+
+	return json.Marshal(BoolResult{Success: success})
+}
+
+
+
+func (c *Contract) registerTicketPlatform(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
+	fmt.Println("running registerTicketPlatform")
+	if len(args) != 1 {
+		return nil, errors.New("Incorrect number of arguments. Expecting 1 args:name")
+	}
+	name := args[0]
+	fmt.Printf("name = %s", name)
+	success, err := stub.InsertRow("ticket_platform", shim.Row{Columns: []*shim.Column{
+		{
+			Value: &shim.Column_String_{String_:name},
+		},
+	}})
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(BoolResult{Success: success})
+}
+
+func (c *Contract) registerVideoHall(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
+	fmt.Println("running registerVideoHall")
+	if len(args) != 4 {
+		return nil, errors.New("Incorrect number of arguments. Expecting 4 args:name, cinema, width, height")
+	}
+	name := args[0]
+	cinema := args[1]
+	width, err := strconv.ParseUint(args[2], 10, 0)
+	if err != nil {
+		return nil, err
+	}
+	height, err := strconv.ParseUint(args[3], 10, 0)
+	if err != nil {
+		return nil, err
+	}
+	fmt.Printf("name = %s, cinema = %s, width = %d, height = %d", name, cinema, width, height)
+	if width == 0 || width >= 20 {
+		return nil, errors.New("Video hall seats array width can't be 0 or larger than 20")
+	}
+	if height == 0 || height >= 20 {
+		return nil, errors.New("Video hall seats array height can't be 0 or larger than 20")
+	}
+	_, err = stub.GetRow("cinema", []shim.Column{
+		{
+			&shim.Column_String_{String_:cinema},
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+	success, err := stub.InsertRow("video_hall", shim.Row{Columns: []*shim.Column{
+		{
+			Value: &shim.Column_String_{String_:name},
+		},
+		{
+			Value: &shim.Column_String_{String_:cinema},
+		},
+		{
+			Value: &shim.Column_Uint64{Uint64:width},
+		},
+		{
+			Value: &shim.Column_Uint64{Uint64:height},
+		},
+	}})
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(BoolResult{Success: success})
+}
+
+func (c *Contract) planMovie(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
+	fmt.Println("running planMovie")
+	if len(args) != 7 {
+		return nil, errors.New("Incorrect number of arguments. Expecting 7 args:id, movie, cinema, video_hall, plan_time, start_time, end_time")
+	}
+	id := args[0]
+	movie := args[1]
+	cinema := args[2]
+	video_hall := args[3]
+	plan_time := args[4]
+	start_time := args[5]
+	end_time := args[6]
+	fmt.Printf("id = %s, movie = %s, cinema = %s, video_hall = %s, plan_time = %s, start_time = %s, end_time = %s",
+		id, movie, cinema, video_hall, plan_time, start_time, end_time)
+	row, err := stub.GetRow("video_hall", []shim.Column{
+		{
+			&shim.Column_String_{String_:video_hall},
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+	width := row.Columns[2].GetUint32()
+	height := row.Columns[3].GetUint32()
+
+	success, err := stub.InsertRow("movie_plan", shim.Row{Columns: []*shim.Column{
+		{
+			Value: &shim.Column_String_{String_:id},
+		},
+		{
+			Value: &shim.Column_String_{String_:movie},
+		},
+		{
+			Value: &shim.Column_String_{String_:cinema},
+		},
+		{
+			Value: &shim.Column_String_{String_:video_hall},
+		},
+		{
+			Value: &shim.Column_String_{String_:plan_time},
+		},
+		{
+			Value: &shim.Column_String_{String_:start_time},
+		},
+		{
+			Value: &shim.Column_String_{String_:end_time},
+		},
+	}})
+	if err != nil {
+		return nil, err
+	}
+	if !success {
+		return json.Marshal(BoolResult{Success: false})
+	}
+
+	// 排片生成电影票
+	var i, j uint32
+	for i = 0; i < height; i++ {
+		for j = 0; j < width; j++ {
+			ticketID := fmt.Sprintf("%s:%d-%d", id, i, j)
+			success, err := stub.InsertRow("ticket", shim.Row{Columns: []*shim.Column{
+				{
+					Value: &shim.Column_String_{String_:ticketID}, // id
+				},
+				{
+					Value: &shim.Column_String_{String_:id}, // movie_plan
+				},
+				{
+					Value: &shim.Column_Uint32{Uint32:j}, // x
+				},
+				{
+					Value: &shim.Column_Uint32{Uint32:i}, // y
+				},
+				{
+					Value: &shim.Column_Bool{Bool:false}, // is_locked
+				},
+				{
+					Value: &shim.Column_Uint32{Uint32:0}, // lock_price
+				},
+				{
+					Value: &shim.Column_Bool{Bool:false}, // is_checked
+				},
+				{
+					Value: &shim.Column_Bool{Bool:false}, // is_clear
+				},
+			}})
+			if err != nil {
+				return nil, err
+			}
+
+			if !success {
+				return json.Marshal(BoolResult{Success: false})
+			}
+		}
+	}
+
+	r, err := stub.GetState(movie)
+	if err != nil {
+		return nil, err
+	}
+	var cr Clear
+	if r != nil {
+		json.Unmarshal(r, cr)
+	} else {
+		cr = Clear{}
+	}
+	cr.IssueNum += width * height
+	bs, err := json.Marshal(cr)
+	if err != nil {
+		return nil, err
+	}
+	stub.PutState(movie, bs)
+	return json.Marshal(BoolResult{Success: true})
+}
+
+func (c *Contract) lockTicket(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
+	fmt.Println("running lockTicket")
+	if len(args) != 2 {
+		return nil, errors.New("Incorrect number of arguments. Expecting 2 args:id, price")
+	}
+	id := args[0]
+	price, err := strconv.ParseUint(args[1], 10, 0)
+	if err != nil {
+		return nil, err
+	}
+	fmt.Printf("id = %s, price = %d", id, price)
+	row, err := stub.GetRow("ticket", []shim.Column{
+		{
+			&shim.Column_String_{String_:id},
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+	movie := row.Columns[1].GetString_()
+	isLocked := row.Columns[5]
+	lockPrice := row.Columns[6]
+	if isLocked.GetBool() {
+		return nil, fmt.Errorf("Ticket %s was locked already", id)
+	}
+	isLocked.Value = &shim.Column_Bool{Bool:true}
+	lockPrice.Value = &shim.Column_Uint64{Uint64:price}
+	success, err := stub.ReplaceRow("ticket", row)
+	if err != nil {
+		return nil, err
+	}
+	r, err := stub.GetState(movie)
+	if err != nil {
+		return nil, err
+	}
+	var cr Clear
+	if r == nil || len(r) == 0 {
+		return nil, errors.New("Movie clear result doesn't exsit")
+	}
+	json.Unmarshal(r, cr)
+	cr.LockNum += 1
+	cr.BoxOffice += price
+	bs, err := json.Marshal(cr)
+	if err != nil {
+		return nil, err
+	}
+	stub.PutState(movie, bs)
+	return json.Marshal(BoolResult{Success: success})
+}
+
+func (c *Contract) checkTicket(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
+	fmt.Println("running checkTicket")
+	if len(args) != 1 {
+		return nil, errors.New("Incorrect number of arguments. Expecting 1 args:id")
+	}
+	id := args[0]
+	fmt.Printf("id = %s", id)
+	row, err := stub.GetRow("ticket", []shim.Column{
+		{
+			&shim.Column_String_{String_:id},
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+	movie := row.Columns[1].GetString_()
+	isChecked := row.Columns[7]
+	if isChecked.GetBool() {
+		return nil, fmt.Errorf("Ticket %s was checked already", id)
+	}
+	isChecked.Value = &shim.Column_Bool{Bool:true}
+	success, err :=stub.ReplaceRow("ticket", row)
+	if err != nil {
+		return nil, err
+	}
+	r, err := stub.GetState(movie)
+	if err != nil {
+		return nil, err
+	}
+	var cr Clear
+	if r == nil || len(r) == 0 {
+		return nil, errors.New("Movie clear result doesn't exsit")
+	}
+	json.Unmarshal(r, cr)
+	cr.CheckNum += 1
+	bs, err := json.Marshal(cr)
+	if err != nil {
+		return nil, err
+	}
+	stub.PutState(movie, bs)
+	return json.Marshal(BoolResult{Success: success})
+}
+
+func (c *Contract) clear(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
+	fmt.Println("running clear")
+	if len(args) != 1 {
+		return nil, errors.New("Incorrect number of arguments. Expecting 1 args:movie")
+	}
+	movie := args[0]
+	fmt.Printf("movie = %s", movie)
+	r, err := stub.GetState(movie)
+	if err != nil {
+		return nil, err
+	}
+	var cr Clear
+	if r == nil || len(r) == 0 {
+		return nil, errors.New("Movie doesn't exsit")
+	}
+	json.Unmarshal(r, cr)
+	regulationProfit := 0.083 * float32(cr.BoxOffice)
+	availableProfit := 0.917 * float32(cr.BoxOffice)
+	cinemaProfit := 0.5 * float32(availableProfit)
+	cinemaCompanyProfit := 0.07 * float32(availableProfit)
+	issuerProfit := 0.43 * float32(availableProfit)
+	clr := ClearResult{
+		Clear: cr,
+		RegulationProfit: regulationProfit,
+		CinemaProfit: cinemaProfit,
+		CinemaCompanyProfit: cinemaCompanyProfit,
+		IssuerProfit: issuerProfit,
+	}
+	return json.Marshal(clr)
+}
+
+func (c *Contract) queryTicket(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
+	fmt.Println("running queryTicket")
+	if len(args) != 1 {
+		return nil, errors.New("Incorrect number of arguments. Expecting 1 args:id")
+	}
+	id := args[0]
+	fmt.Printf("id = %s", id)
+	row, err := stub.GetRow("ticket", []shim.Column{
+		{
+			&shim.Column_String_{String_:id},
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+	ticket := Ticket{
+		ID: row.Columns[0].GetString_(),
+		Movie: row.Columns[1].GetString_(),
+		MoviePlan: row.Columns[2].GetString_(),
+		X: row.Columns[3].GetUint32(),
+		Y: row.Columns[4].GetUint32(),
+		IsLocked: row.Columns[5].GetBool(),
+		LockPrice: row.Columns[6].GetUint32(),
+		IsChecked: row.Columns[7].GetBool(),
+		IsClear: row.Columns[8].GetBool(),
+	}
+	return json.Marshal(ticket)
+
+}
+
+func (c *Contract) queryPlan(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
+	fmt.Println("running queryPlan")
+	rowChan, err := stub.GetRows("movie_plan", []shim.Column{})
+	if err != nil {
+		return nil, err
+	}
+	var plans []MoviePlan
+	timer := time.NewTimer(time.Minute)
+	for {
+		select {
+		case row, ok := <- rowChan:
+			if !ok {
+				plans = nil
+			} else {
+				plans = append(plans, MoviePlan{
+					ID: row.Columns[0].GetString_(),
+					Movie: row.Columns[1].GetString_(),
+					Cinema: row.Columns[2].GetString_(),
+					VideoHall: row.Columns[3].GetString_(),
+					PlanTime: row.Columns[4].GetString_(),
+					StartTime: row.Columns[5].GetString_(),
+					EndTime: row.Columns[6].GetString_(),
+				})
+			}
+			if plans == nil {
+				break
+			}
+		case <- timer.C:
+			return nil, errors.New("query TimeOut")
+		}
+	}
+	return json.Marshal(plans)
+}
+
+func (c *Contract) queryCinema(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
+	fmt.Println("running queryCinema")
+	if len(args) != 1 {
+		return nil, errors.New("Incorrect number of arguments. Expecting 1 args:name")
+	}
+	name := args[0]
+	fmt.Printf("name = %s", name)
 	row, err := stub.GetRow("cinema", []shim.Column{
 		{
 			&shim.Column_String_{String_:name},
@@ -155,37 +694,9 @@ func (t *Contract) registerCinema(stub shim.ChaincodeStubInterface, args []strin
 	if err != nil {
 		return nil, err
 	}
-	return []byte(row.String()), nil
-}
-
-func (t *Contract) registerTicketPlatform(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
-	return nil, nil
-}
-
-func (t *Contract) registerVideoHall(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
-	return nil, nil
-}
-
-func (t *Contract) planMovie(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
-	return nil, nil
-}
-
-func (t *Contract) lockTicket(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
-	return nil, nil
-}
-
-func (t *Contract) checkTicket(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
-	return nil, nil
-}
-
-func (t *Contract) clear(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
-	return nil, nil
-}
-
-func (t *Contract) queryTicket(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
-	return nil, nil
-}
-
-func (t *Contract) queryPlan(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
-	return nil, nil
+	cinema := Cinema{
+		Name: row.Columns[0].GetString_(),
+		Company: row.Columns[1].GetString_(),
+	}
+	return json.Marshal(cinema)
 }
