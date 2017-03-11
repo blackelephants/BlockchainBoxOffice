@@ -6,7 +6,6 @@ import (
 	"errors"
 	"strconv"
 	"encoding/json"
-	"time"
 )
 
 // 电影院
@@ -312,7 +311,7 @@ func (c *Contract) registerCinema(stub shim.ChaincodeStubInterface, args []strin
 	}
 
 	if !success {
-		return nil, fmt.Errorf("Insert cinema %s false, may be table not found or row already exist", name)
+		return nil, fmt.Errorf("Insert cinema %s false, row already exist", name)
 	}
 	return nil, nil
 }
@@ -333,7 +332,7 @@ func (c *Contract) registerTicketPlatform(stub shim.ChaincodeStubInterface, args
 		return nil, err
 	}
 	if !success {
-		return nil, fmt.Errorf("Insert ticket platform %s false, may be table not found or row already exist", name)
+		return nil, fmt.Errorf("Insert ticket platform %s false, row already exist", name)
 	}
 	return nil, nil
 }
@@ -389,7 +388,7 @@ func (c *Contract) registerVideoHall(stub shim.ChaincodeStubInterface, args []st
 		return nil, err
 	}
 	if !success {
-		return nil, fmt.Errorf("Insert cinema %s video hall %s false, may be table not found or row already exist", cinema, name)
+		return nil, fmt.Errorf("Insert cinema %s video hall %s false, row already exist", cinema, name)
 	}
 	return nil, nil
 }
@@ -452,7 +451,7 @@ func (c *Contract) planMovie(stub shim.ChaincodeStubInterface, args []string) ([
 		return nil, err
 	}
 	if !success {
-		return nil, fmt.Errorf("Insert movie plan %s false, may be table not found or row already exist", id)
+		return nil, fmt.Errorf("Insert movie plan %s false, row already exist", id)
 	}
 
 	// 排片生成电影票
@@ -494,7 +493,7 @@ func (c *Contract) planMovie(stub shim.ChaincodeStubInterface, args []string) ([
 			}
 
 			if !success {
-				return nil, fmt.Errorf("Insert ticket %s false, may be table not found or row already exist", ticketID)
+				return nil, fmt.Errorf("Insert ticket %s false, row already exist", ticketID)
 			}
 		}
 	}
@@ -505,7 +504,10 @@ func (c *Contract) planMovie(stub shim.ChaincodeStubInterface, args []string) ([
 	}
 	var cr Clear
 	if r != nil && len(r) > 0 {
-		json.Unmarshal(r, cr)
+		err = json.Unmarshal(r, &cr)
+		if err != nil {
+			return nil, err
+		}
 	} else {
 		cr = Clear{}
 	}
@@ -537,6 +539,9 @@ func (c *Contract) lockTicket(stub shim.ChaincodeStubInterface, args []string) (
 	if err != nil {
 		return nil, err
 	}
+	if len(row.Columns) == 0 {
+		return nil, fmt.Errorf("Ticket %s doesn't exist", id)
+	}
 	movie := row.Columns[1].GetString_()
 	isLocked := row.Columns[5]
 	lockPrice := row.Columns[6]
@@ -545,7 +550,7 @@ func (c *Contract) lockTicket(stub shim.ChaincodeStubInterface, args []string) (
 	}
 	isLocked.Value = &shim.Column_Bool{Bool:true}
 	lockPrice.Value = &shim.Column_Uint64{Uint64:price}
-	success, err := stub.ReplaceRow("ticket", row)
+	_, err = stub.ReplaceRow("ticket", row)
 	if err != nil {
 		return nil, err
 	}
@@ -555,9 +560,12 @@ func (c *Contract) lockTicket(stub shim.ChaincodeStubInterface, args []string) (
 	}
 	var cr Clear
 	if r == nil || len(r) == 0 {
-		return nil, errors.New("Movie clear result doesn't exsit")
+		return nil, fmt.Errorf("Movie %s clear result doesn't exsit", movie)
 	}
-	json.Unmarshal(r, cr)
+	err = json.Unmarshal(r, &cr)
+	if err != nil {
+		return nil, err
+	}
 	cr.LockNum += 1
 	cr.BoxOffice += price
 	bs, err := json.Marshal(cr)
@@ -565,7 +573,7 @@ func (c *Contract) lockTicket(stub shim.ChaincodeStubInterface, args []string) (
 		return nil, err
 	}
 	stub.PutState(movie, bs)
-	return json.Marshal(BoolResult{Success: success})
+	return nil, nil
 }
 
 func (c *Contract) checkTicket(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
@@ -583,13 +591,16 @@ func (c *Contract) checkTicket(stub shim.ChaincodeStubInterface, args []string) 
 	if err != nil {
 		return nil, err
 	}
+	if len(row.Columns) == 0 {
+		return nil, fmt.Errorf("Ticket %s doesn't exist", id)
+	}
 	movie := row.Columns[1].GetString_()
 	isChecked := row.Columns[7]
 	if isChecked.GetBool() {
 		return nil, fmt.Errorf("Ticket %s was checked already", id)
 	}
 	isChecked.Value = &shim.Column_Bool{Bool:true}
-	success, err :=stub.ReplaceRow("ticket", row)
+	_, err = stub.ReplaceRow("ticket", row)
 	if err != nil {
 		return nil, err
 	}
@@ -599,16 +610,19 @@ func (c *Contract) checkTicket(stub shim.ChaincodeStubInterface, args []string) 
 	}
 	var cr Clear
 	if r == nil || len(r) == 0 {
-		return nil, errors.New("Movie clear result doesn't exsit")
+		return nil, fmt.Errorf("Movie %s clear result doesn't exsit", movie)
 	}
-	json.Unmarshal(r, cr)
+	err = json.Unmarshal(r, &cr)
+	if err != nil {
+		return nil, err
+	}
 	cr.CheckNum += 1
 	bs, err := json.Marshal(cr)
 	if err != nil {
 		return nil, err
 	}
 	stub.PutState(movie, bs)
-	return json.Marshal(BoolResult{Success: success})
+	return nil, nil
 }
 
 func (c *Contract) clear(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
@@ -624,9 +638,12 @@ func (c *Contract) clear(stub shim.ChaincodeStubInterface, args []string) ([]byt
 	}
 	var cr Clear
 	if r == nil || len(r) == 0 {
-		return nil, errors.New("Movie doesn't exsit")
+		return nil, fmt.Errorf("Movie %s clear result doesn't exsit", movie)
 	}
-	json.Unmarshal(r, cr)
+	err = json.Unmarshal(r, &cr)
+	if err != nil {
+		return nil, err
+	}
 	regulationProfit := 0.083 * float32(cr.BoxOffice)
 	availableProfit := 0.917 * float32(cr.BoxOffice)
 	cinemaProfit := 0.5 * float32(availableProfit)
@@ -682,7 +699,6 @@ func (c *Contract) queryAllPlan(stub shim.ChaincodeStubInterface, args []string)
 		return nil, err
 	}
 	var plans []MoviePlan
-	timer := time.NewTimer(time.Minute)
 	for {
 		select {
 		case row, ok := <- rowChan:
@@ -699,11 +715,9 @@ func (c *Contract) queryAllPlan(stub shim.ChaincodeStubInterface, args []string)
 					EndTime: row.Columns[6].GetString_(),
 				})
 			}
-			if plans == nil {
-				break
-			}
-		case <- timer.C:
-			return nil, errors.New("query TimeOut")
+		}
+		if plans == nil {
+			break
 		}
 	}
 	return json.Marshal(plans)
