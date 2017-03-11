@@ -705,6 +705,9 @@ func (c *Contract) queryCinema(stub shim.ChaincodeStubInterface, args []string) 
 	if err != nil {
 		return nil, err
 	}
+	if len(row.Columns) == 0 {
+		return []byte{}, nil
+	}
 	cinema := Cinema{
 		Name: row.Columns[0].GetString_(),
 		Company: row.Columns[1].GetString_(),
