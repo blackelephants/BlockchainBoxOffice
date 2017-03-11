@@ -273,14 +273,18 @@ func (c *Contract) Query(stub shim.ChaincodeStubInterface, function string, args
 	// Handle different functions
 	if function == "queryTicket" { //read a variable
 		return c.queryTicket(stub, args)
-	} else if function == "queryPlan" {
-		return c.queryPlan(stub, args)
+	} else if function == "queryAllPlan" {
+		return c.queryAllPlan(stub, args)
 	} else if function == "queryCinema" {
 		return c.queryCinema(stub, args)
 	} else if function == "queryTicketPlatform" {
 		return c.queryTicketPlatform(stub, args)
 	} else if function == "queryVideoHall" {
 		return c.queryVideoHall(stub, args)
+	} else if function == "queryPlan" {
+		return c.queryPlan(stub, args)
+	} else if function == "queryMovie" {
+		return c.queryMovie(stub, args)
 	}
 
 	fmt.Println("query did not find func: " + function)
@@ -671,8 +675,8 @@ func (c *Contract) queryTicket(stub shim.ChaincodeStubInterface, args []string) 
 
 }
 
-func (c *Contract) queryPlan(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
-	fmt.Println("running queryPlan")
+func (c *Contract) queryAllPlan(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
+	fmt.Println("running queryAllPlan")
 	rowChan, err := stub.GetRows("movie_plan", []shim.Column{})
 	if err != nil {
 		return nil, err
@@ -783,4 +787,45 @@ func (c *Contract) queryVideoHall(stub shim.ChaincodeStubInterface, args []strin
 		Height: row.Columns[3].GetUint64(),
 	}
 	return json.Marshal(videoHall)
+}
+
+func (c *Contract) queryPlan(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
+	fmt.Println("running queryPlan")
+	if len(args) != 1 {
+		return nil, errors.New("Incorrect number of arguments. Expecting 1 args:id")
+	}
+	id := args[0]
+	fmt.Printf("id = %s", id)
+	row, err := stub.GetRow("movie_plan", []shim.Column{
+		{
+			&shim.Column_String_{String_:id},
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+	if len(row.Columns) == 0 {
+		return []byte{}, nil
+	}
+	plan := MoviePlan{
+		ID: row.Columns[0].GetString_(),
+		Movie: row.Columns[1].GetString_(),
+		Cinema: row.Columns[2].GetString_(),
+		VideoHall: row.Columns[3].GetString_(),
+		PlanTime: row.Columns[4].GetString_(),
+		StartTime: row.Columns[5].GetString_(),
+		EndTime: row.Columns[6].GetString_(),
+	}
+	return json.Marshal(plan)
+}
+
+func (c *Contract) queryMovie(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
+	fmt.Println("running queryMovie")
+	if len(args) != 1 {
+		return nil, errors.New("Incorrect number of arguments. Expecting 1 args:movie")
+	}
+	movie := args[0]
+	fmt.Printf("movie = %s", movie)
+
+	return stub.GetState(movie)
 }
