@@ -308,7 +308,7 @@ func (c *Contract) registerCinema(stub shim.ChaincodeStubInterface, args []strin
 	}
 
 	if !success {
-		return nil, errors.New("Insert false, may be table not found or row already exist")
+		return nil, errors.New("Insert cinema false, may be table not found or row already exist")
 	}
 	return nil, nil
 }
@@ -329,7 +329,7 @@ func (c *Contract) registerTicketPlatform(stub shim.ChaincodeStubInterface, args
 		return nil, err
 	}
 	if !success {
-		return nil, errors.New("Insert false, may be table not found or row already exist")
+		return nil, errors.New("Insert ticket platform false, may be table not found or row already exist")
 	}
 	return nil, nil
 }
@@ -356,13 +356,16 @@ func (c *Contract) registerVideoHall(stub shim.ChaincodeStubInterface, args []st
 	if height == 0 || height >= 20 {
 		return nil, errors.New("Video hall seats array height can't be 0 or larger than 20")
 	}
-	_, err = stub.GetRow("cinema", []shim.Column{
+	row, err := stub.GetRow("cinema", []shim.Column{
 		{
 			&shim.Column_String_{String_:cinema},
 		},
 	})
 	if err != nil {
 		return nil, err
+	}
+	if len(row.Columns) == 0 {
+		return nil, fmt.Errorf("Cinema %s doesn't exist", cinema)
 	}
 	success, err := stub.InsertRow("video_hall", shim.Row{Columns: []*shim.Column{
 		{
@@ -382,7 +385,7 @@ func (c *Contract) registerVideoHall(stub shim.ChaincodeStubInterface, args []st
 		return nil, err
 	}
 	if !success {
-		return nil, errors.New("Insert false, may be table not found or row already exist")
+		return nil, errors.New("Insert video hall false, may be table not found or row already exist")
 	}
 	return nil, nil
 }
@@ -730,6 +733,9 @@ func (c *Contract) queryTicketPlatform(stub shim.ChaincodeStubInterface, args []
 	if err != nil {
 		return nil, err
 	}
+	if len(row.Columns) == 0 {
+		return []byte{}, nil
+	}
 	ticketPlatform := TicketPlatform{
 		Name: row.Columns[0].GetString_(),
 	}
@@ -754,6 +760,9 @@ func (c *Contract) queryVideoHall(stub shim.ChaincodeStubInterface, args []strin
 	})
 	if err != nil {
 		return nil, err
+	}
+	if len(row.Columns) == 0 {
+		return []byte{}, nil
 	}
 	videoHall := VideoHall{
 		Name: row.Columns[0].GetString_(),
