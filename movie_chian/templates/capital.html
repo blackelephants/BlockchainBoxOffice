@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta name="description" content="">
+    <meta name="author" content="">
+
+    <!-- Latest compiled and minified CSS -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css"
+          integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+
+    <!-- Optional theme -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap-theme.min.css"
+          integrity="sha384-rHyoN1iRsVXV4nD0JutlnGaslCJuC7uwjduW9SVrLvRYooPp2bWYgmgJQIXwl/Sp" crossorigin="anonymous">
+
+    <!-- Latest compiled and minified JavaScript -->
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"
+            integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa"
+            crossorigin="anonymous"></script>
+
+    <title>区块链票房</title>
+
+
+</head>
+
+<body>
+
+<nav class="navbar navbar-inverse navbar-fixed-top">
+    <div class="container">
+        <div class="navbar-header">
+            <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar"
+                    aria-expanded="false" aria-controls="navbar">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </button>
+            <a class="navbar-brand active" href="/">区块链票房</a>
+        </div>
+        <div id="navbar" class="collapse navbar-collapse">
+            <ul class="nav navbar-nav">
+                <li><a href="/cinemas" class="active">电影院</a></li>
+                <li><a href="/halls">影厅</a></li>
+                <li><a href="/audience">观众</a></li>
+                <li><a href="/seller">售票平台</a></li>
+                <li class="active"><a href="/capital">专资办 / Profit Mng</a></li>
+
+            </ul>
+        </div><!--/.nav-collapse -->
+    </div>
+</nav>
+
+<div class="container" style="padding-top: 60px">
+    <div class="panel panel-default">
+        <div class="panel-heading">
+            <h3 class="panel-title">资金分润 / Profit Share</h3>
+        </div>
+        <div class="panel-body">
+            <a class="btn btn-primary" href="/capital_query" role="button">View</a>
+            <br/>
+        </div>
+    </div>
+
+
+
+    {% if  capital_query %}
+        <table class="table table-condensed">
+            <tr> <td class="success">电影名称 / Movie Name</td> <td class="success">金刚狼3：殊死一战</td> </tr>
+            <tr> <td class="success">总发行票数 / Issue Count</td> <td class="success">{{ capital_query.issue_num }}</td> </tr>
+            <tr> <td class="success">已售票数 / Sold Count</td> <td class="success">{{ capital_query.lock_num }}</td> </tr>
+            <tr> <td class="success">有效入场票数 / Check-in Count</td> <td class="success">{{ capital_query.check_num }}</td> </tr>
+            <tr> <td class="success">总票房收入 / Total Income</td> <td class="success">￥{{ capital_query.box_office }}</td> </tr>
+            <tr> <td class="success">影院分润 / Cinema Profit</td> <td class="success">￥{{ capital_query.cinema_profit }}</td> </tr>
+            <tr> <td class="success">院线分润 / Theater Chain Profit</td> <td class="success">￥{{ capital_query.cinema_company_profit }}</td> </tr>
+            <tr> <td class="success">发行方分润 / Issuer Profit</td> <td class="success">￥{{ capital_query.issuer_profit }}</td> </tr>
+            <tr> <td class="success">专资办分润 / Movie Special Officer Profit</td> <td class="success">￥{{ capital_query.regulation_profit }}</td> </tr>
+        </table>
+
+    {% endif %}
+
+
+
+
+</div><!-- /.container -->
+
+</body>
+
+</html>

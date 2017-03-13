@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta name="description" content="">
+    <meta name="author" content="">
+
+    <!-- Latest compiled and minified CSS -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css"
+          integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+
+    <!-- Optional theme -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap-theme.min.css"
+          integrity="sha384-rHyoN1iRsVXV4nD0JutlnGaslCJuC7uwjduW9SVrLvRYooPp2bWYgmgJQIXwl/Sp" crossorigin="anonymous">
+
+    <!-- Latest compiled and minified JavaScript -->
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"
+            integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa"
+            crossorigin="anonymous"></script>
+
+    <title>区块链票房</title>
+
+
+</head>
+
+<body>
+
+<nav class="navbar navbar-inverse navbar-fixed-top">
+    <div class="container">
+        <div class="navbar-header">
+            <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar"
+                    aria-expanded="false" aria-controls="navbar">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </button>
+            <a class="navbar-brand active" href="/">区块链票房</a>
+        </div>
+        <div id="navbar" class="collapse navbar-collapse">
+            <ul class="nav navbar-nav">
+                <li><a href="/cinemas" class="active">电影院</a></li>
+                <li><a href="/halls">影厅</a></li>
+                <li class="active"><a href="/audience">观众 / Audiences</a></li>
+                <li><a href="/seller">售票平台</a></li>
+                <li><a href="/capital">专资办</a></li>
+
+            </ul>
+        </div><!--/.nav-collapse -->
+    </div>
+</nav>
+
+<div class="container" style="padding-top: 60px">
+    <div class="panel panel-default">
+        <div class="panel-heading">
+            <h3 class="panel-title">当前排片 / Movie Schedules</h3>
+        </div>
+        <div class="panel-body">
+            <a class="btn btn-primary" href="/all_plan_query" role="button">View</a>
+            <br/>
+        </div>
+    </div>
+
+    {% if  all_plan_query %}
+        <table class="table table-condensed">
+
+
+            {% for o in all_plan_query %}
+                <tr>
+                    <td class="success">电影</td>
+                    <td class="success">{{ o.movie }}</td>
+                    <td class="success">放映厅</td>
+                    <td class="success">{{ o.cinema }} {{ o.video_hall }}</td>
+                    <td class="success">放映时间</td>
+                    <td class="success">{{ o.start_time }}</td>
+                </tr>
+
+            {% endfor %}
+
+
+        </table>
+
+    {% endif %}
+
+
+
+
+
+    <div class="panel panel-default">
+        <div class="panel-heading">
+            <h3 class="panel-title">电影票 / Movie Ticket</h3>
+        </div>
+        <div class="panel-body">
+
+            <div class="form-group">
+                <label for="exampleInputEmail1">电影名称 / Movie Name</label>
+                <input type="email" class="form-control" id="exampleInputEmail1" value="金刚狼3：殊死一战">
+            </div>
+            <div class="form-group">
+                <label for="exampleInputEmail1">影厅名称 / Movie Hall</label>
+                <input type="email" class="form-control" id="exampleInputEmail1" value="金沙巨幕1号厅">
+            </div>
+            <div class="form-group">
+                <label for="exampleInputPassword1">播放时间 / Start Time</label>
+                <input type="inbox" class="form-control" id="exampleInputPassword1" value="2017-03-12 9:00">
+            </div>
+
+
+            <a class="btn btn-primary" href="/lock_ticket" role="button">Buy</a>
+            <a class="btn btn-primary" href="/check_ticket" role="button">Audit</a>
+
+
+            {% if check_ticket  or lock_ticket %}
+                <div class="alert alert-success" role="alert" style="padding: 20px; margin: 20px;">
+                    {{ check_ticket }}
+                    {{ lock_ticket }}
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+
+</div><!-- /.container -->
+
+</body>
+
+</html>
